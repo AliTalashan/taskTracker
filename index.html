@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0b1220" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <title>Task Score</title>
+  <style>
+    :root{
+      --bg:#0b1220; --panel:#101a2e; --text:#e5e7eb; --muted:#9ca3af;
+      --accent:#60a5fa; --good:#34d399; --bad:#f87171; --line:rgba(255,255,255,.08);
+      --shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{
+      margin:0; color:var(--text);
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:linear-gradient(180deg,#071023,var(--bg));
+    }
+    .app{min-height:100vh; padding-bottom:84px}
+    .topbar{
+      position:sticky; top:0; z-index:10;
+      padding:14px 14px 10px;
+      background:rgba(7,16,35,.85);
+      backdrop-filter:blur(10px);
+      border-bottom:1px solid var(--line);
+    }
+    .titleRow{display:flex; align-items:center; justify-content:space-between; gap:12px}
+    .h1{font-size:16px; font-weight:900}
+    .btn{
+      border:none; border-radius:12px; padding:10px 12px;
+      font-weight:900; font-size:13px;
+      color:var(--text); background:rgba(255,255,255,.08);
+      border:1px solid var(--line);
+    }
+    .btn.primary{background:rgba(96,165,250,.18); border-color:rgba(96,165,250,.35)}
+    .btn.danger{background:rgba(248,113,113,.14); border-color:rgba(248,113,113,.35)}
+    .pills{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+    .pill{
+      background:rgba(255,255,255,.06); border:1px solid var(--line);
+      padding:8px 10px; border-radius:999px; font-size:12px; color:var(--muted);
+    }
+    .pill strong{color:var(--text)}
+    .content{padding:14px; max-width:980px; margin:0 auto}
+    .sectionTitle{font-size:13px; color:var(--muted); font-weight:900; margin:14px 2px 10px}
+    .grid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px}
+    @media (min-width:720px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media (min-width:980px){.grid{grid-template-columns:repeat(4,minmax(0,1fr))}}
+    .card{
+      background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.03));
+      border:1px solid var(--line); border-radius:18px; padding:12px;
+      box-shadow:var(--shadow); user-select:none;
+    }
+    .cardHeader{display:flex; align-items:flex-start; justify-content:space-between; gap:8px}
+    .cardTitle{font-weight:900; font-size:14px; line-height:1.2}
+    .badge{
+      font-size:11px; padding:4px 8px; border-radius:999px;
+      border:1px solid var(--line); color:var(--muted);
+      background:rgba(0,0,0,.12); white-space:nowrap;
+    }
+    .badge.running{border-color:rgba(52,211,153,.35); color:var(--good)}
+    .kv{margin-top:10px; display:flex; flex-direction:column; gap:8px}
+    .kvRow{display:flex; justify-content:space-between; gap:10px; font-size:12px; color:var(--muted)}
+    .kvRow strong{color:var(--text)}
+    .small{font-size:12px; color:var(--muted); margin-top:8px; line-height:1.35}
+    .btnRow{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px}
+    .tabbar{
+      position:fixed; bottom:0; left:0; right:0;
+      display:flex; gap:10px; padding:10px 12px 18px;
+      background:rgba(7,16,35,.85); backdrop-filter:blur(10px);
+      border-top:1px solid var(--line); justify-content:center;
+    }
+    .tab{
+      flex:1; max-width:220px; border:1px solid var(--line);
+      background:rgba(255,255,255,.06);
+      border-radius:16px; padding:10px 12px;
+      font-weight:900; font-size:13px; color:var(--muted);
+    }
+    .tab.active{color:var(--text); border-color:rgba(96,165,250,.35); background:rgba(96,165,250,.14)}
+    .table{
+      width:100%; border-collapse:collapse; border:1px solid var(--line);
+      border-radius:16px; overflow:hidden; background:rgba(255,255,255,.03);
+    }
+    .table th,.table td{padding:10px; text-align:left; border-bottom:1px solid var(--line); font-size:13px}
+    .table th{color:var(--muted); font-weight:900}
+    .table tr:last-child td{border-bottom:none}
+    .modalBackdrop{
+      position:fixed; inset:0; background:rgba(0,0,0,.6);
+      display:flex; align-items:flex-end; justify-content:center;
+      padding:14px; z-index:999;
+    }
+    .modal{
+      width:100%; max-width:720px;
+      background:linear-gradient(180deg,rgba(16,26,46,.98),rgba(10,16,33,.98));
+      border:1px solid var(--line); border-radius:22px; padding:14px; box-shadow:var(--shadow);
+    }
+    .modalTop{display:flex; align-items:center; justify-content:space-between; gap:10px}
+    .modalTitle{font-size:14px; font-weight:900}
+    .form{margin-top:12px; display:grid; gap:10px}
+    .field{display:grid; gap:6px}
+    .label{font-size:12px; color:var(--muted); font-weight:900}
+    .input{
+      width:100%; padding:10px 12px; border-radius:14px;
+      border:1px solid var(--line); background:rgba(255,255,255,.05);
+      color:var(--text); outline:none; font-size:14px;
+    }
+    .row2{display:grid; gap:10px; grid-template-columns:1fr 1fr}
+  </style>
+</head>
+<body>
+<div class="app">
+  <div class="topbar">
+    <div class="titleRow">
+      <div class="h1">Task Score</div>
+      <button class="btn primary" id="addTaskBtn">+ Add Task</button>
+    </div>
+    <div class="pills">
+      <div class="pill">Today score: <strong id="todayScore">0.0</strong></div>
+      <div class="pill">Today time: <strong id="todayTime">0h 00m</strong></div>
+      <div class="pill">Date: <strong id="todayKey">----</strong></div>
+    </div>
+    <div class="btnRow">
+      <button class="btn danger" id="resetTodayBtn">Reset Today (stores into history)</button>
+    </div>
+    <div class="small">
+      Timers are timestamp-based (start timestamp + accumulated time), so sleep/locking won’t “lose time.”
+      Weekly report is rolling last 7 days.
+    </div>
+  </div>
+
+  <div class="content" id="content"></div>
+
+  <div class="tabbar">
+    <button class="tab active" data-tab="today">Today</button>
+    <button class="tab" data-tab="goals">Goals</button>
+    <button class="tab" data-tab="weekly">Weekly</button>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modalBackdrop" id="modalBackdrop" style="display:none;">
+  <div class="modal">
+    <div class="modalTop">
+      <div class="modalTitle" id="modalTitle">Add Task</div>
+      <button class="btn" id="closeModalBtn">Close</button>
+    </div>
+    <div class="form">
+      <div class="field">
+        <div class="label">Title</div>
+        <input class="input" id="taskTitle" placeholder="e.g., Study" />
+      </div>
+      <div class="row2">
+        <div class="field">
+          <div class="label">Score per hour</div>
+          <input class="input" id="taskScorePerHour" inputmode="decimal" placeholder="e.g., 7" />
+        </div>
+        <div class="field">
+          <div class="label">Goal (minutes)</div>
+          <input class="input" id="taskGoalMinutes" inputmode="numeric" placeholder="e.g., 90" />
+        </div>
+      </div>
+      <div class="btnRow">
+        <button class="btn primary" id="saveTaskBtn">Save</button>
+        <button class="btn danger" id="deleteTaskBtn" style="display:none;">Delete</button>
+      </div>
+      <div class="small">
+        Score = (time in hours) × (score/hour). Goals reset only when you hit “Reset Goal Cycle.”
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const LS_KEY = "taskScorePwa_v1";
+  const $ = (id) => document.getElementById(id);
+
+  const els = {
+    content: $("content"),
+    todayScore: $("todayScore"),
+    todayTime: $("todayTime"),
+    todayKey: $("todayKey"),
+    addTaskBtn: $("addTaskBtn"),
+    resetTodayBtn: $("resetTodayBtn"),
+    modalBackdrop: $("modalBackdrop"),
+    modalTitle: $("modalTitle"),
+    closeModalBtn: $("closeModalBtn"),
+    saveTaskBtn: $("saveTaskBtn"),
+    deleteTaskBtn: $("deleteTaskBtn"),
+    taskTitle: $("taskTitle"),
+    taskScorePerHour: $("taskScorePerHour"),
+    taskGoalMinutes: $("taskGoalMinutes"),
+  };
+
+  function todayKeyLocal(d = new Date()){
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,"0");
+    const day = String(d.getDate()).padStart(2,"0");
+    return `${y}-${m}-${day}`;
+  }
+  function fmtHM(ms){
+    ms = Math.max(0, ms);
+    const totalSec = Math.floor(ms/1000);
+    const h = Math.floor(totalSec/3600);
+    const m = Math.floor((totalSec%3600)/60);
+    return `${h}h ${String(m).padStart(2,"0")}m`;
+  }
+  function fmtHMS(ms){
+    ms = Math.max(0, ms);
+    const totalSec = Math.floor(ms/1000);
+    const h = Math.floor(totalSec/3600);
+    const m = Math.floor((totalSec%3600)/60);
+    const s = totalSec%60;
+    if (h>0) return `${h}h ${String(m).padStart(2,"0")}m`;
+    return `${m}m ${String(s).padStart(2,"0")}s`;
+  }
+  function scoreFor(task, ms){ return (ms/3600000) * (Number(task.scorePerHour)||0); }
+  function safeUUID(){
+    return (crypto && crypto.randomUUID) ? crypto.randomUUID() :
+      `id_${Math.random().toString(16).slice(2)}_${Date.now()}`;
+  }
+  function clamp(n,a,b){ return Math.max(a, Math.min(b, n)); }
+  function minutesToMs(min){ return Math.max(0, Math.round((Number(min)||0)*60000)); }
+
+  function defaultTasks(){
+    const names = [
+      "Deep Work","Study / Problem Solving","Reading","Writing","Research",
+      "Exercise","Language Practice","Admin / Email","Household","Social / Family",
+      "Errands","Relax","Planning","Teaching / TA","Other"
+    ];
+    return names.map((name,i)=>({
+      id: safeUUID(),
+      title: name,
+      scorePerHour: (i===0?8:(i===1?7:5)),
+      goalMs: minutesToMs(i===0?120:60),
+      isRunning:false,
+      runningSince:null,
+      accumulatedMsToday:0
+    }));
+  }
+
+  function loadState(){
+    try{
+      const raw = localStorage.getItem(LS_KEY);
+      if(!raw) return null;
+      return JSON.parse(raw);
+    }catch{ return null; }
+  }
+  function saveState(state){
+    try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch{}
+  }
+
+  function initialState(){
+    const tk = todayKeyLocal();
+    return {
+      version:1,
+      lastOpenedDayKey: tk,
+      tasks: defaultTasks(),
+      dayLogs: { [tk]: {} },
+      goalProgress: {}
+    };
+  }
+
+  let state = (() => {
+    const loaded = loadState();
+    if (loaded && loaded.version === 1) {
+      // basic merge safety
+      const base = initialState();
+      return { ...base, ...loaded };
+    }
+    return initialState();
+  })();
+
+  let tab = "today";
+  let editingTaskId = null;
+
+  function ensureDayLog(dayKey){
+    if(!state.dayLogs[dayKey]) state.dayLogs[dayKey] = {};
+  }
+  function getLogMs(dayKey, taskId){
+    const log = state.dayLogs[dayKey] || {};
+    return Number(log[taskId] || 0);
+  }
+  function setLogMs(dayKey, taskId, ms){
+    ensureDayLog(dayKey);
+    state.dayLogs[dayKey][taskId] = ms;
+  }
+
+  function effectiveTodayMs(task){
+    let ms = Number(task.accumulatedMsToday||0);
+    if(task.isRunning && task.runningSince){
+      ms += Math.max(0, Date.now() - task.runningSince);
+    }
+    return ms;
+  }
+
+  function flushTodayToDayLogs(dayKey){
+    ensureDayLog(dayKey);
+    for(const t of state.tasks){
+      if(t.isRunning && t.runningSince){
+        const now = Date.now();
+        t.accumulatedMsToday += Math.max(0, now - t.runningSince);
+      }
+      t.isRunning = false;
+      t.runningSince = null;
+
+      const prev = getLogMs(dayKey, t.id);
+      setLogMs(dayKey, t.id, prev + (Number(t.accumulatedMsToday)||0));
+      t.accumulatedMsToday = 0;
+    }
+  }
+
+  function lastNDaysKeys(n){
+    const keys = [];
+    const d = new Date();
+    for(let i=0;i<n;i++){
+      keys.push(todayKeyLocal(d));
+      d.setDate(d.getDate()-1);
+    }
+    return keys.reverse();
+  }
+
+  function rolloverCheck(){
+    const tk = todayKeyLocal();
+    if(state.lastOpenedDayKey !== tk){
+      flushTodayToDayLogs(state.lastOpenedDayKey);
+      state.lastOpenedDayKey = tk;
+      ensureDayLog(tk);
+    }
+  }
+
+  function renderTop(){
+    const tk = todayKeyLocal();
+    els.todayKey.textContent = tk;
+
+    const totalMs = state.tasks.reduce((s,t)=>s+effectiveTodayMs(t),0);
+    const totalScore = state.tasks.reduce((s,t)=>s+scoreFor(t,effectiveTodayMs(t)),0);
+
+    els.todayTime.textContent = fmtHM(totalMs);
+    els.todayScore.textContent = totalScore.toFixed(1);
+  }
+
+  function cardHTML(t){
+    const eff = effectiveTodayMs(t);
+    const sc = scoreFor(t, eff);
+    const badge = t.isRunning
+      ? `<div class="badge running">RUNNING</div>`
+      : `<div class="badge">${Number(t.scorePerHour||0)}/h</div>`;
+
+    return `
+      <div class="card" data-task="${t.id}">
+        <div class="cardHeader">
+          <div class="cardTitle">${escapeHtml(t.title)}</div>
+          ${badge}
+        </div>
+        <div class="kv">
+          <div class="kvRow"><span>Time</span><strong>${fmtHMS(eff)}</strong></div>
+          <div class="kvRow"><span>Score</span><strong>${sc.toFixed(1)}</strong></div>
+        </div>
+        <div class="btnRow">
+          <button class="btn" data-edit="${t.id}">Edit</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, (c) => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"
+    }[c]));
+  }
+
+  function renderToday(){
+    const html = `
+      <div class="sectionTitle">Today</div>
+      <div class="grid">
+        ${state.tasks.map(cardHTML).join("")}
+      </div>
+    `;
+    els.content.innerHTML = html;
+
+    // tile toggle
+    els.content.querySelectorAll("[data-task]").forEach((el)=>{
+      el.addEventListener("click",(e)=>{
+        const editBtn = e.target.closest("[data-edit]");
+        if(editBtn) return; // edit handled below
+        const id = el.getAttribute("data-task");
+        toggleTask(id);
+      });
+    });
+
+    // edit buttons
+    els.content.querySelectorAll("[data-edit]").forEach((btn)=>{
+      btn.addEventListener("click",(e)=>{
+        e.stopPropagation();
+        const id = btn.getAttribute("data-edit");
+        openModal(id);
+      });
+    });
+  }
+
+  function renderGoals(){
+    const rows = state.tasks.map(t=>{
+      const prog = Number(state.goalProgress[t.id]||0);
+      const rem = Math.max(0, Number(t.goalMs||0) - prog);
+      return `
+        <tr>
+          <td style="font-weight:900">${escapeHtml(t.title)}</td>
+          <td>${fmtHM(t.goalMs||0)}</td>
+          <td>${fmtHM(prog)}</td>
+          <td>${fmtHM(rem)}</td>
+        </tr>
+      `;
+    }).join("");
+
+    const manageRows = state.tasks.map(t=>`
+      <tr>
+        <td style="font-weight:900">${escapeHtml(t.title)}</td>
+        <td>${Number(t.scorePerHour||0)}</td>
+        <td>${fmtHM(t.goalMs||0)}</td>
+        <td>
+          <button class="btn" data-edit="${t.id}">Edit</button>
+          <button class="btn danger" data-del="${t.id}">Delete</button>
+        </td>
+      </tr>
+    `).join("");
+
+    els.content.innerHTML = `
+      <div class="sectionTitle">Goals (reset only when you press Reset Goal Cycle)</div>
+
+      <div class="btnRow">
+        <button class="btn primary" id="applyTodayBtn">Apply Today → Goal Progress + Store Today</button>
+        <button class="btn danger" id="resetGoalBtn">Reset Goal Cycle</button>
+      </div>
+
+      <div class="small">
+        “Apply Today” adds today’s time into goal progress, saves today into history, and clears today timers.
+      </div>
+
+      <table class="table" style="margin-top:12px">
+        <thead><tr><th>Task</th><th>Goal</th><th>Progress</th><th>Remaining</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+
+      <div class="sectionTitle" style="margin-top:16px">Manage Tasks</div>
+      <table class="table">
+        <thead><tr><th>Task</th><th>Score/h</th><th>Goal</th><th>Actions</th></tr></thead>
+        <tbody>${manageRows}</tbody>
+      </table>
+    `;
+
+    $("applyTodayBtn").onclick = applyTodayToGoalProgress;
+    $("resetGoalBtn").onclick = resetGoalCycle;
+
+    els.content.querySelectorAll("[data-edit]").forEach((btn)=>{
+      btn.addEventListener("click",()=>openModal(btn.getAttribute("data-edit")));
+    });
+    els.content.querySelectorAll("[data-del]").forEach((btn)=>{
+      btn.addEventListener("click",()=>deleteTask(btn.getAttribute("data-del")));
+    });
+  }
+
+  function renderWeekly(){
+    const days = lastNDaysKeys(7);
+    const per = {};
+    state.tasks.forEach(t => per[t.id] = { title:t.title, ms:0, score:0 });
+
+    for(const dk of days){
+      const log = state.dayLogs[dk] || {};
+      state.tasks.forEach(t=>{
+        const ms = Number(log[t.id] || 0);
+        per[t.id].ms += ms;
+        per[t.id].score += scoreFor(t, ms);
+      });
+    }
+
+    const rows = Object.entries(per)
+      .map(([id,v])=>({id, ...v}))
+      .sort((a,b)=>b.ms-a.ms);
+
+    const totalMs = rows.reduce((s,r)=>s+r.ms,0);
+    const totalScore = rows.reduce((s,r)=>s+r.score,0);
+
+    const rowHTML = rows.map(r=>`
+      <tr>
+        <td style="font-weight:900">${escapeHtml(r.title)}</td>
+        <td>${fmtHM(r.ms)}</td>
+        <td>${r.score.toFixed(1)}</td>
+      </tr>
+    `).join("");
+
+    els.content.innerHTML = `
+      <div class="sectionTitle">Weekly Report (rolling last 7 days)</div>
+      <div class="pills">
+        <div class="pill">Total time: <strong>${fmtHM(totalMs)}</strong></div>
+        <div class="pill">Total score: <strong>${totalScore.toFixed(1)}</strong></div>
+        <div class="pill">Days: <strong>${days[0]} → ${days[days.length-1]}</strong></div>
+      </div>
+
+      <table class="table" style="margin-top:12px">
+        <thead><tr><th>Task</th><th>Time</th><th>Score</th></tr></thead>
+        <tbody>${rowHTML}</tbody>
+      </table>
+
+      <div class="small" style="margin-top:10px">
+        Weekly numbers come from saved day history. Use “Reset Today” to store today into history.
+      </div>
+    `;
+  }
+
+  function render(){
+    rolloverCheck();
+    renderTop();
+
+    if(tab === "today") renderToday();
+    else if(tab === "goals") renderGoals();
+    else renderWeekly();
+
+    saveState(state);
+  }
+
+  function toggleTask(id){
+    const t = state.tasks.find(x=>x.id===id);
+    if(!t) return;
+
+    if(!t.isRunning){
+      t.isRunning = true;
+      t.runningSince = Date.now();
+    }else{
+      const now = Date.now();
+      if(t.runningSince) t.accumulatedMsToday += Math.max(0, now - t.runningSince);
+      t.isRunning = false;
+      t.runningSince = null;
+    }
+    render();
+  }
+
+  function resetToday(){
+    const tk = todayKeyLocal();
+    flushTodayToDayLogs(tk);
+    render();
+  }
+
+  function resetGoalCycle(){
+    state.goalProgress = {};
+    render();
+  }
+
+  function applyTodayToGoalProgress(){
+    for(const t of state.tasks){
+      const eff = effectiveTodayMs(t);
+      state.goalProgress[t.id] = Number(state.goalProgress[t.id]||0) + eff;
+    }
+    flushTodayToDayLogs(todayKeyLocal());
+    render();
+  }
+
+  function openModal(taskId){
+    editingTaskId = taskId || null;
+    const t = taskId ? state.tasks.find(x=>x.id===taskId) : null;
+
+    els.modalTitle.textContent = t ? "Edit Task" : "Add Task";
+    els.deleteTaskBtn.style.display = t ? "inline-block" : "none";
+
+    els.taskTitle.value = t ? t.title : "";
+    els.taskScorePerHour.value = t ? String(t.scorePerHour ?? 0) : "5";
+    els.taskGoalMinutes.value = t ? String(Math.round((t.goalMs||0)/60000)) : "60";
+
+    els.modalBackdrop.style.display = "flex";
+  }
+
+  function closeModal(){
+    els.modalBackdrop.style.display = "none";
+    editingTaskId = null;
+  }
+
+  function saveTaskFromModal(){
+    const title = (els.taskTitle.value || "").trim() || "Untitled";
+    const scorePerHour = clamp(Number(els.taskScorePerHour.value || 0), 0, 100000);
+    const goalMs = minutesToMs(clamp(Number(els.taskGoalMinutes.value || 0), 0, 1000000));
+
+    if(editingTaskId){
+      const t = state.tasks.find(x=>x.id===editingTaskId);
+      if(!t) return;
+      t.title = title; t.scorePerHour = scorePerHour; t.goalMs = goalMs;
+    } else {
+      state.tasks.unshift({
+        id: safeUUID(),
+        title,
+        scorePerHour,
+        goalMs,
+        isRunning:false,
+        runningSince:null,
+        accumulatedMsToday:0
+      });
+    }
+    closeModal();
+    render();
+  }
+
+  function deleteTask(taskId){
+    const id = taskId || editingTaskId;
+    if(!id) return;
+    state.tasks = state.tasks.filter(t=>t.id!==id);
+    delete state.goalProgress[id];
+    Object.keys(state.dayLogs).forEach(dk=>{
+      if(state.dayLogs[dk] && state.dayLogs[dk][id]!=null) delete state.dayLogs[dk][id];
+    });
+    closeModal();
+    render();
+  }
+
+  // Tab buttons
+  document.querySelectorAll(".tab").forEach((btn)=>{
+    btn.addEventListener("click", ()=>{
+      document.querySelectorAll(".tab").forEach(b=>b.classList.remove("active"));
+      btn.classList.add("active");
+      tab = btn.getAttribute("data-tab");
+      render();
+    });
+  });
+
+  // Top buttons
+  els.addTaskBtn.onclick = () => openModal(null);
+  els.resetTodayBtn.onclick = resetToday;
+
+  // Modal buttons
+  els.closeModalBtn.onclick = closeModal;
+  els.modalBackdrop.addEventListener("click",(e)=>{ if(e.target === els.modalBackdrop) closeModal(); });
+  els.saveTaskBtn.onclick = saveTaskFromModal;
+  els.deleteTaskBtn.onclick = () => deleteTask(editingTaskId);
+
+  // Live re-render so running timers update on screen
+  setInterval(() => renderTopAndCurrentTabOnly(), 1000);
+
+  function renderTopAndCurrentTabOnly(){
+    rolloverCheck();
+    renderTop();
+    // Only update the current tab content where time displays live:
+    // simplest: full render if today tab, otherwise leave static.
+    if(tab === "today") renderToday();
+    saveState(state);
+  }
+
+  // PWA service worker
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", ()=>{
+      navigator.serviceWorker.register("sw.js").catch(()=>{});
+    });
+  }
+
+  // Initial render
+  render();
+})();
+</script>
+</body>
+</html>
